@@ -205,7 +205,7 @@ if (params.fusion_inspector) {
 Channel
     .fromFilePairs( params.reads, size: params.singleEnd ? 1 : 2 )
     .ifEmpty { exit 1, "Cannot find any reads matching: ${params.reads}\nNB: Path needs to be enclosed in quotes!\nIf this is single-end data, please specify --singleEnd on the command line." }
-    .into { read_files_fastqc; read_files_summary; read_files_multiqc; read_files_star_fusion; read_files_fusioncatcher; 
+    .into { read_files_fastqc; read_files_summary; read_files_multiqc; read_files_star_fusion; read_files_fusioncatcher;
             read_files_gfusion; read_files_fusion_inspector; read_files_ericscript; read_files_pizzly; read_files_squid }
 
 
@@ -431,7 +431,6 @@ process pizzly {
     set val(name), file(reads) from read_files_pizzly
     file fasta from pizzly_fasta
     file gtf from pizzly_gtf
-    
     output:
     file 'pizzly_fusions.json' into pizzly_fusions
     file '*.{json,txt}' into pizzly_output
@@ -464,7 +463,7 @@ process squid {
     set val(name), file(reads) from read_files_squid
     file star_index_squid
     file gtf
-    
+
     output:
     file '*_annotated.txt' into squid_fusions
     file '*.txt' into squid_output
@@ -494,10 +493,10 @@ process squid {
 process summary {
     tag "$name"
     publishDir "${params.outdir}/Report-${name}", mode: 'copy'
- 
+
     when:
     !params.test && (params.fusioncatcher || params.star_fusion || params.ericscript || params.pizzly || params.squid)
-    
+
     input:
     set val(name), file(reads) from read_files_summary
     file fusioncatcher from fusioncatcher_fusions.ifEmpty('')
@@ -510,15 +509,17 @@ process summary {
     file 'fusions.txt' into summary_fusions
     file 'summary.yaml' into summary_fusions_mq
     file '*.html' into report
-    
+
     script:
-    extra = params.tool_cutoff ? "-t ${params.tool_cutoff}" : "" 
+    extra = params.tool_cutoff ? "-t ${params.tool_cutoff}" : ""
     """
     transformer.py -i ${fusioncatcher} -t fusioncatcher
     transformer.py -i ${star_fusion} -t star_fusion
     transformer.py -i ${ericscript} -t ericscript
     transformer.py -i ${pizzly} -t pizzly
     transformer.py -i ${squid} -t squid
+    cp summary.yaml summary.yaml.bak
+    grep -v null summary.yaml > summary && mv summary summary.yaml
     generate_report.py fusions.txt summary.yaml -s ${name} -o . ${extra}
     """
 }
@@ -580,7 +581,8 @@ process get_software_versions {
     echo $workflow.nextflow.version > v_nextflow.txt
     fastqc --version > v_fastqc.txt
     multiqc --version > v_multiqc.txt
-    cat $baseDir/tools/fusioncatcher/Dockerfile | grep "VERSION" > v_fusioncatcher.txt
+    #cat $baseDir/tools/fusioncatcher/Dockerfile | grep "VERSION" > v_fusioncatcher.txt
+    cat $baseDir/tools/fusioncatcher/environment.yml | grep "fusioncatcher" > v_fusioncatcher.txt
     cat $baseDir/tools/fusion-inspector/environment.yml | grep "fusion-inspector" > v_fusion_inspector.txt
     cat $baseDir/tools/star-fusion/environment.yml | grep "star-fusion" > v_star_fusion.txt
     cat $baseDir/tools/ericscript/environment.yml | grep "ericscript" > v_ericscript.txt
