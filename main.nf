@@ -273,7 +273,9 @@ if (params.star_index) {
     Channel
         .fromPath(params.star_index)
         .ifEmpty { exit 1, "STAR index not found: ${params.star_index}" }
-        .into { star_index_squid; star_index_star_fusion }
+        //.into { star_index_squid; star_index_star_fusion }
+        .set { star_index_squid; }
+
 } else {
     process build_star_index {
         tag "$fasta"
@@ -284,7 +286,8 @@ if (params.star_index) {
         file gtf
 
         output:
-        file "star" into star_index_squid, star_index_star_fusion
+        file "star" into star_index_squid
+        //file "star" into star_index_squid, star_index_star_fusion
 
         script:
         def avail_mem = task.memory ? "--limitGenomeGenerateRAM ${task.memory.toBytes() - 100000000}" : ''
@@ -318,7 +321,7 @@ process star_fusion {
 
     input:
     set val(name), file(reads) from read_files_star_fusion
-    file star_index_star_fusion
+    //file star_index_star_fusion
     file reference from star_fusion_ref
 
     output:
@@ -328,9 +331,11 @@ process star_fusion {
     script:
     def avail_mem = task.memory ? "--limitBAMsortRAM ${task.memory.toBytes() - 100000000}" : ''
     option = params.singleEnd ? "--left_fq ${reads[0]}" : "--left_fq ${reads[0]} --right_fq ${reads[1]}"
+
+    //--genomeDir ${star_index_star_fusion} \\
     """
     STAR \\
-        --genomeDir ${star_index_star_fusion} \\
+        --genomeDir ${reference}/ref_genome.fa.star.idx \\
         --readFilesIn ${reads} \\
         --twopassMode Basic \\
         --outReadsUnmapped None \\
